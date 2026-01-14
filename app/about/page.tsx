@@ -30,7 +30,7 @@ export default function AboutPage() {
             <p>如果你想和我交流，可以通过以下方式联系我：</p>
             <ul className="list-disc list-inside space-y-1">
               <li>GitHub: <a href="https://github.com/MisakiForacy" className="text-blue-600 hover:underline">@MisakiForacy</a></li>
-              <li>Email: your-email@example.com</li>
+              <li>Email: 请在此处填写您的邮箱地址</li>
             </ul>
           </div>
         </section>
