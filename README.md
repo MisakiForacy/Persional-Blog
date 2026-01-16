@@ -8,3 +8,8 @@
 * 总之不该在README上浪费太多时间，具体内容都丢进TODO了
 
 * 关于技术栈在 [`TODO.md`](./TODO.md) 中有提及，主要是前端React+TypeScript，后端Node.js+Express，数据库MongoDB，部署Docker+Nginx。
+
+* 如何本地调试
+  ```shell
+npm run dev
+  ```
