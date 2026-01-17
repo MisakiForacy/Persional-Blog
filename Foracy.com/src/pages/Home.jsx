@@ -4,10 +4,12 @@ import Footer from "../components/Footer.jsx";
 
 export default function Home() {
     return (
-        <>
+        <div className="space-y-12">
             <Header />
-            <BlogList />
+            <div className="space-y-12">
+                <BlogList />
+            </div>
             <Footer />
-        </>
+        </div>
     );
 }
