@@ -25,7 +25,8 @@ export default function About() {
 
         <p>
           <strong>我擅长的：</strong><br />
-          算法与数据结构、前端开发、全栈开发
+          算法与数据结构、前端开发、全栈开发<br />
+          长跑、足球
         </p>
 
         <p>
