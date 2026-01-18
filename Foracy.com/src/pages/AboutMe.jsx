@@ -17,16 +17,18 @@ export default function About() {
         </p>
 
         <p>
-          <strong>我相信的：</strong><br />
-          • 代码是逻辑的艺术<br />
-          • 写作是思考的延伸<br />
-          • 持续输出是最好的输入
+          <strong>我相信的: </strong><br />
+          <i>越简单越美</i>
         </p>
 
         <p>
-          <strong>我擅长的：</strong><br />
-          算法与数据结构、前端开发、全栈开发<br />
-          长跑、足球
+            <strong>我擅长的: </strong><br />
+            <i>算法与数据结构、前端开发、全栈开发</i>
+        </p>
+
+        <p>
+            <strong>我热爱的: </strong><br />
+            <i>长跑、足球</i>
         </p>
 
         <p>

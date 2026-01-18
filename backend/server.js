@@ -3,7 +3,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,9 +22,55 @@ app.use((req, res, next) => {
   next();
 });
 
+// 生成下一个6位ID
+const getNextId = (metaPath) => {
+  try {
+    if (!existsSync(metaPath)) {
+      return '000001';
+    }
+
+    const metaContent = readFileSync(metaPath, 'utf-8');
+    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
+    
+    if (!postsArrayMatch || !postsArrayMatch[1].trim()) {
+      return '000001';
+    }
+
+    // 解析现有posts，找出最大ID
+    const postsArrayCode = `[${postsArrayMatch[1]}]`;
+    const postsList = Function(`return ${postsArrayCode}`)();
+    
+    let maxId = 0;
+    postsList.forEach(post => {
+      if (post.slug && /^\d{6}$/.test(post.slug)) {
+        const id = parseInt(post.slug, 10);
+        if (id > maxId) maxId = id;
+      }
+    });
+
+    const nextId = maxId + 1;
+    return String(nextId).padStart(6, '0');
+  } catch (error) {
+    console.error('生成ID错误:', error);
+    return '000001';
+  }
+};
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend server is running' });
+});
+
+// 获取下一个可用ID
+app.get('/api/next-id', (req, res) => {
+  try {
+    const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
+    const nextId = getNextId(metaPath);
+    res.json({ success: true, nextId });
+  } catch (error) {
+    console.error('获取ID错误:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // 上传文章接口
@@ -33,9 +79,9 @@ app.post('/api/upload', (req, res) => {
     const { post, content, fileName } = req.body;
 
     // 验证必填字段
-    if (!post || !post.slug || !post.title) {
+    if (!post || !post.title) {
       return res.status(400).json({ 
-        error: '缺少必填字段：slug 或 title' 
+        error: '缺少必填字段：title' 
       });
     }
 
@@ -45,15 +91,17 @@ app.post('/api/upload', (req, res) => {
       });
     }
 
-    if (!fileName) {
-      return res.status(400).json({ 
-        error: '缺少文件名' 
-      });
-    }
-
     // 构建文件路径（指向前端项目）
     const postsDir = join(__dirname, '../Foracy.com/src/posts');
-    const filePath = join(postsDir, fileName);
+    const metaPath = join(postsDir, 'meta.js');
+
+    // 如果没有提供slug，自动生成6位ID
+    if (!post.slug) {
+      post.slug = getNextId(metaPath);
+    }
+
+    const finalFileName = fileName || `${post.slug}.${post.type || 'md'}`;
+    const filePath = join(postsDir, finalFileName);
 
     // 确保目录存在
     if (!existsSync(postsDir)) {
@@ -64,9 +112,6 @@ app.post('/api/upload', (req, res) => {
     writeFileSync(filePath, content, 'utf-8');
     console.log(`✓ 文件已保存: ${filePath}`);
 
-    // 更新 meta.js
-    const metaPath = join(postsDir, 'meta.js');
-    
     // 读取现有 meta.js
     let metaContent = readFileSync(metaPath, 'utf-8');
 
@@ -84,36 +129,30 @@ app.post('/api/upload', (req, res) => {
     const postCode = JSON.stringify(newPost, null, 4);
 
     // 找到 posts 数组并插入新文章
-    // 将最后一个 } 之前的内容找到，在里面添加新文章
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
+    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*?)\];/);
     
     if (postsArrayMatch) {
-      const postsArray = postsArrayMatch[1];
+      const postsArray = postsArrayMatch[1].trim();
       
       // 检查是否已存在相同 slug 的文章
-      const slugRegex = new RegExp(`slug:\\s*["']${post.slug}["']`, 'i');
-      if (slugRegex.test(postsArray)) {
-        return res.status(409).json({ 
-          error: `Slug "${post.slug}" 已存在，请使用不同的 Slug` 
-        });
+      if (postsArray) {
+        const slugRegex = new RegExp(`["']slug["']\\s*:\\s*["']${post.slug}["']`, 'i');
+        if (slugRegex.test(postsArray)) {
+          return res.status(409).json({ 
+            error: `Slug "${post.slug}" 已存在，请使用不同的 Slug` 
+          });
+        }
       }
 
       // 在数组中插入新文章
-      const updatedArray = postsArray.trim();
       let newContent;
       
-      if (updatedArray === '') {
+      if (!postsArray || postsArray === '') {
         // 空数组
-        newContent = metaContent.replace(
-          /export const posts = \[\];/,
-          `export const posts = [\n    ${postCode}\n];`
-        );
+        newContent = `export const posts = [\n    ${postCode}\n];\n`;
       } else {
         // 非空数组，在最后添加
-        newContent = metaContent.replace(
-          /export const posts = \[([\s\S]*)\];/,
-          `export const posts = [${updatedArray},\n    ${postCode}\n];`
-        );
+        newContent = `export const posts = [${postsArray},\n    ${postCode}\n];\n`;
       }
 
       // 保存更新后的 meta.js
@@ -136,6 +175,67 @@ app.post('/api/upload', (req, res) => {
     res.status(500).json({ 
       error: error.message || '服务器错误' 
     });
+  }
+});
+
+// 删除文章接口
+app.delete('/api/posts/:slug', (req, res) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) {
+      return res.status(400).json({ error: '缺少 slug' });
+    }
+
+    const postsDir = join(__dirname, '../Foracy.com/src/posts');
+    const metaPath = join(postsDir, 'meta.js');
+
+    if (!existsSync(metaPath)) {
+      return res.status(404).json({ error: 'meta.js 不存在' });
+    }
+
+    const metaContent = readFileSync(metaPath, 'utf-8');
+    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
+
+    if (!postsArrayMatch) {
+      return res.status(500).json({ error: 'meta.js 格式不正确' });
+    }
+
+    // 解析 posts 数组
+    const postsArrayCode = `[${postsArrayMatch[1]}]`;
+    const postsList = Function(`return ${postsArrayCode}`)();
+
+    const index = postsList.findIndex(p => p.slug === slug);
+    if (index === -1) {
+      return res.status(404).json({ error: `未找到 slug 为 "${slug}" 的文章` });
+    }
+
+    const removed = postsList.splice(index, 1)[0];
+
+    // 删除对应文件（按 type 推测后缀）
+    const ext = removed.type === 'html' ? 'html' : 'md';
+    const filePath = join(postsDir, `${removed.slug}.${ext}`);
+    if (existsSync(filePath)) {
+      try {
+        unlinkSync(filePath);
+        console.log(`✓ 已删除文件: ${filePath}`);
+      } catch (err) {
+        console.warn(`文件删除失败: ${filePath}`, err.message);
+      }
+    }
+
+    // 重写 meta.js
+    const rebuilt = postsList
+      .map(p => JSON.stringify(p, null, 4))
+      .join(',\n    ');
+
+    const newMeta = `export const posts = [\n    ${rebuilt}\n];\n`;
+    writeFileSync(metaPath, newMeta, 'utf-8');
+    console.log('✓ meta.js 已更新(删除)');
+
+    return res.json({ success: true, deleted: removed });
+  } catch (error) {
+    console.error('删除错误:', error.message);
+    return res.status(500).json({ error: error.message || '服务器错误' });
   }
 });
 
@@ -181,8 +281,10 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Blog backend server running at http://localhost:${PORT}`);
   console.log(`\n可用的 API 端点:`);
   console.log(`  GET  /api/health       - 健康检查`);
+  console.log(`  GET  /api/next-id      - 获取下一个可用ID`);
   console.log(`  POST /api/upload       - 上传文章`);
-  console.log(`  GET  /api/posts        - 获取文章列表\n`);
+  console.log(`  GET  /api/posts        - 获取文章列表`);
+  console.log(`  DELETE /api/posts/:slug - 删除文章\n`);
 });
 
 // 优雅关闭

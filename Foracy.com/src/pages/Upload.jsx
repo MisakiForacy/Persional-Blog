@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PostContent from '../components/PostContent';
 
 const TAG_OPTIONS = [
@@ -19,7 +19,27 @@ export default function Upload() {
   const [fileName, setFileName] = useState('');
   const [fileType, setFileType] = useState(''); // 'md' or 'html'
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteSlug, setDeleteSlug] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // 组件加载时获取下一个ID
+  useEffect(() => {
+    const fetchNextId = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/next-id`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.nextId) {
+            setSlug(data.nextId);
+          }
+        }
+      } catch (error) {
+        console.error('获取ID失败:', error);
+      }
+    };
+    fetchNextId();
+  }, []);
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -37,11 +57,7 @@ export default function Upload() {
     setContent(text);
     setMessage({ type: '', text: '' });
 
-    // 如果slug为空，自动从文件名生成
-    if (!slug) {
-      const suggestedSlug = file.name.replace(/\.(md|markdown|html|htm)$/i, '');
-      setSlug(suggestedSlug);
-    }
+    // 文件名不再影响slug，slug由后端统一分配
   };
 
   const toggleTag = (tag) => {
@@ -54,10 +70,6 @@ export default function Upload() {
 
   const handleConfirm = async () => {
     // 验证必填字段
-    if (!slug.trim()) {
-      setMessage({ type: 'error', text: '请输入 Slug' });
-      return;
-    }
     if (!title.trim()) {
       setMessage({ type: 'error', text: '请输入标题' });
       return;
@@ -71,13 +83,21 @@ export default function Upload() {
     setMessage({ type: '', text: '' });
 
     try {
-      // 获取当前日期 YYYY-MM-DD
+      // 获取当前日期时间 YYYY-MM-DD HH:mm
       const today = new Date();
-      const date = today.toISOString().split('T')[0];
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const hours = String(today.getHours()).padStart(2, '0');
+      const minutes = String(today.getMinutes()).padStart(2, '0');
+      const date = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+      // 使用当前slug（由后端分配的6位ID）
+      const finalSlug = slug.trim();
 
       // 构建新文章对象
       const newPost = {
-        slug: slug.trim(),
+        slug: finalSlug,
         title: title.trim(),
         date: date,
         summary: summary.trim() || '',
@@ -92,7 +112,7 @@ export default function Upload() {
         body: JSON.stringify({
           post: newPost,
           content: content,
-          fileName: `${slug}.${fileType}`
+          fileName: `${finalSlug}.${fileType}`
         })
       });
 
@@ -100,9 +120,8 @@ export default function Upload() {
 
       if (response.ok && data.success) {
         setMessage({ type: 'success', text: '✓ 上传成功！文章已发布。' });
-        // 清空表单
-        setTimeout(() => {
-          setSlug('');
+        // 清空表单并获取新ID
+        setTimeout(async () => {
           setTitle('');
           setSummary('');
           setSelectedTags([]);
@@ -110,6 +129,19 @@ export default function Upload() {
           setFileName('');
           setFileType('');
           setMessage({ type: '', text: '' });
+          
+          // 重新获取下一个ID
+          try {
+            const nextIdResponse = await fetch(`${API_BASE_URL}/api/next-id`);
+            if (nextIdResponse.ok) {
+              const nextIdData = await nextIdResponse.json();
+              if (nextIdData.success && nextIdData.nextId) {
+                setSlug(nextIdData.nextId);
+              }
+            }
+          } catch (err) {
+            console.error('获取新ID失败:', err);
+          }
         }, 2000);
       } else {
         setMessage({ type: 'error', text: data.error || '上传失败，请重试' });
@@ -125,8 +157,40 @@ export default function Upload() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteSlug.trim()) {
+      setMessage({ type: 'error', text: '请输入要删除的 Slug' });
+      return;
+    }
+
+    setDeleting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/posts/${deleteSlug.trim()}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setMessage({ type: 'success', text: `✓ 已删除文章：${deleteSlug.trim()}` });
+        setDeleteSlug('');
+      } else {
+        setMessage({ type: 'error', text: data.error || '删除失败，请重试' });
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setMessage({ 
+        type: 'error', 
+        text: `删除失败：${error.message}。请确认后端已启动（http://localhost:3001）` 
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
         {/* 标题栏 */}
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
@@ -157,18 +221,12 @@ export default function Upload() {
 
         {/* 表单区域 */}
         <div className="space-y-4">
-          {/* Slug 输入 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Slug <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="例如：hello-world（URL 中使用）"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          {/* ID 显示（只读） */}
+          <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">文章ID</span>
+              <span className="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400">{slug || '加载中...'}</span>
+            </div>
           </div>
 
           {/* 标题输入 */}
@@ -271,6 +329,32 @@ export default function Upload() {
             请填写文章信息并选择文件
           </div>
         )}
+
+        {/* 删除文章 */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">删除文章</h3>
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <input
+              type="text"
+              value={deleteSlug}
+              onChange={(e) => setDeleteSlug(e.target.value)}
+              placeholder="输入要删除的文章 Slug"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className={`px-5 py-2 rounded-lg font-medium transition-colors ${
+                deleting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              {deleting ? '删除中...' : '删除文章'}
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">删除将移除对应文件并更新 meta.js，请谨慎操作。</p>
+        </div>
       </div>
     </div>
   );
