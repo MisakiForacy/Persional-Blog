@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 import PostContent from './components/PostContent';
 import Upload from './pages/Upload';
 import AboutMe from './pages/AboutMe';
+import Profile from './pages/Profile';
 
 export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -18,7 +19,7 @@ export default function App() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
+      setShowScrollTop(window.scrollY > 200);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="/posts/:slug" element={<PostPage />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/about" element={<AboutMe />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
       </main>
@@ -78,7 +80,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* 浮动导航栏 - 向下滑动300px后显示 */}
+      {/* 浮动导航栏 - 向下滑动200px后显示 */}
       {showScrollTop && (
         <div className="fixed top-6 right-6 flex gap-1 z-40 bg-white/80 dark:bg-gray-800/80 rounded-full shadow-md p-1 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
           <button
@@ -131,6 +133,23 @@ export default function App() {
                 <path d="M4 11a2 2 0 012-2h8a2 2 0 012 2v3a2 2 0 01-2 2H6a2 2 0 01-2-2v-3z" />
               </svg>
             )}
+          </button>
+
+          <button
+              onClick={() => (window.location.href = '/profile')}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+              aria-label="个人主页"
+              title="个人主页"
+          >
+              {isDark ? (
+                <svg className="w-6 h-6 text-purple-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2.5a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7zM4.5 15.2c0-2.4 2.7-3.7 5.5-3.7s5.5 1.3 5.5 3.7c0 .99-.27 1.6-.27 1.6H4.77s-.27-.61-.27-1.6z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2.5a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7zM4.5 15.2c0-2.4 2.7-3.7 5.5-3.7s5.5 1.3 5.5 3.7c0 .99-.27 1.6-.27 1.6H4.77s-.27-.61-.27-1.6z" />
+                </svg>
+              )}
           </button>
         </div>
       )}

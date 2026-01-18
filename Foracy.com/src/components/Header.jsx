@@ -26,7 +26,7 @@ export default function Header() {
         <header className="flex items-center justify-between gap-2"> 
             <a href="/about" className="flex items-center gap-2">
                 <img 
-                    src="/img.png" 
+                    src="/icons/img.png" 
                     alt="Profile Picture" 
                     className="rounded-full w-12 h-12" 
                 /> 
@@ -100,6 +100,22 @@ export default function Header() {
                     )}
                 </button>
 
+                <button
+                    onClick={() => (window.location.href = '/profile')}
+                    className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+                    aria-label="个人主页"
+                    title="个人主页"
+                >
+                    {isDark ? (
+                        <svg className="w-6 h-6 text-purple-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2.5a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7zM4.5 15.2c0-2.4 2.7-3.7 5.5-3.7s5.5 1.3 5.5 3.7c0 .99-.27 1.6-.27 1.6H4.77s-.27-.61-.27-1.6z" />
+                        </svg>
+                    ) : (
+                        <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2.5a3.5 3.5 0 0 1 0 7 3.5 3.5 0 0 1 0-7zM4.5 15.2c0-2.4 2.7-3.7 5.5-3.7s5.5 1.3 5.5 3.7c0 .99-.27 1.6-.27 1.6H4.77s-.27-.61-.27-1.6z" />
+                        </svg>
+                    )}
+                </button>
             </div>
         </header> 
     ); 
