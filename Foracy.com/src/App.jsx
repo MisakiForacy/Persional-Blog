@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import PostContent from './components/PostContent';
 import Upload from './pages/Upload';
+import AboutMe from './pages/AboutMe';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/posts/:slug" element={<PostPage />} />
             <Route path="/upload" element={<Upload />} />
+            <Route path="/about" element={<AboutMe />} />
           </Routes>
         </div>
       </main>
