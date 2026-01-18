@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import ContributionHeatmap from '../components/ContributionHeatmap';
 import { getCombinedContributions } from '../utils/contributionData';
+import { posts } from '../posts/meta';
 
 // Codeforces rating颜色映射
 const getRatingColor = (rating) => {
@@ -31,7 +32,17 @@ export default function Profile() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await getCombinedContributions('MisakiForacy', 'FXY_AC');
+        // 统计博客每日提交次数（按日期汇总，不含时间）
+        const blogData = posts.reduce((acc, post) => {
+          const raw = post.date || '';
+          const dateOnly = raw.split(' ')[0];
+          if (dateOnly) {
+            acc[dateOnly] = (acc[dateOnly] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        const data = await getCombinedContributions('MisakiForacy', 'FXY_AC', blogData);
         setContributionData(data);
 
         // 从数据中提取所有年份并排序
