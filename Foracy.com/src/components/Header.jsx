@@ -24,17 +24,19 @@ export default function Header() {
 
     return ( 
         <header className="flex items-center justify-between gap-2"> 
-            <a href="/" className="flex items-center gap-2">
+            <a href="/about" className="flex items-center gap-2">
                 <img 
                     src="/img.png" 
                     alt="Profile Picture" 
                     className="rounded-full w-12 h-12" 
                 /> 
-                <div className="flex-col space-y-0">
+                <div className="flex-col space-y-2">
                     <h1 className="text-gray-600 dark:text-gray-400"> 
                         Foracy's Blog 
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-150">An Utopia Only For Me, Focus On Technology And Love</p>
+                    <p className="text-gray-500 dark:text-gray-150">
+                        My Utopia: Focus Only On Technology And Love
+                    </p>
                 </div>
             </a>
             
@@ -97,6 +99,7 @@ export default function Header() {
                         </svg>
                     )}
                 </button>
+
             </div>
         </header> 
     ); 
