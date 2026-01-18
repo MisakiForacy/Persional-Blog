@@ -1,15 +1,14 @@
+// src/pages/Home.jsx
 import Header from "../components/Header";
-import BlogList from "../components/BlogList.jsx";
-import Footer from "../components/Footer.jsx";
+import BlogList from "../components/BlogList";
+import Footer from "../components/Footer";
 
 export default function Home() {
-    return (
-        <div className="space-y-12">
-            <Header />
-            <div className="space-y-12">
-                <BlogList />
-            </div>
-            <Footer />
-        </div>
-    );
+  return (
+    // 关键：加上 max-w-2xl（或其他宽度）
+    <div className="w-full mx-auto space-y-12 px-4">
+      {/* <Header /> */}
+      <BlogList />
+    </div>
+  );
 }
