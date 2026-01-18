@@ -104,6 +104,7 @@ export default function App() {
             onClick={toggleTheme}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
             aria-label="切换主题"
+            title="切换主题"
           >
             {isDark ? (
               <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">

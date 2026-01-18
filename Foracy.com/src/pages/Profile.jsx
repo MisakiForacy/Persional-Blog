@@ -3,12 +3,29 @@ import { useState, useEffect } from 'react';
 import ContributionHeatmap from '../components/ContributionHeatmap';
 import { getCombinedContributions } from '../utils/contributionData';
 
+// Codeforces rating颜色映射
+const getRatingColor = (rating) => {
+  if (!rating) return '#808080'; // 灰色 - Unrated
+  if (rating < 1200) return '#808080'; // 灰色 - Newbie
+  if (rating < 1400) return '#008000'; // 绿色 - Pupil
+  if (rating < 1600) return '#03A89E'; // 青色 - Specialist
+  if (rating < 1900) return '#0000FF'; // 蓝色 - Expert
+  if (rating < 2100) return '#AA00AA'; // 紫色 - Candidate Master
+  if (rating < 2300) return '#FF8C00'; // 橙色 - Master
+  if (rating < 2400) return '#FF8C00'; // 橙色 - International Master
+  if (rating < 2600) return '#FF0000'; // 红色 - Grandmaster
+  if (rating < 3000) return '#FF0000'; // 红色 - International Grandmaster
+  return '#AA0000'; // 深红色 - Legendary Grandmaster
+};
+
 export default function Profile() {
   const [contributionData, setContributionData] = useState({});
   const [availableYears, setAvailableYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [githubUser, setGithubUser] = useState(null);
+  const [codeforcesUser, setCodeforcesUser] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,6 +46,22 @@ export default function Profile() {
         // 默认选择最新的年份
         if (years.length > 0) {
           setSelectedYear(years[0]);
+        }
+
+        // 获取GitHub用户信息
+        const githubResponse = await fetch('https://api.github.com/users/MisakiForacy');
+        if (githubResponse.ok) {
+          const githubData = await githubResponse.json();
+          setGithubUser(githubData);
+        }
+
+        // 获取Codeforces用户信息
+        const cfResponse = await fetch('https://codeforces.com/api/user.info?handles=FXY_AC');
+        if (cfResponse.ok) {
+          const cfData = await cfResponse.json();
+          if (cfData.status === 'OK' && cfData.result.length > 0) {
+            setCodeforcesUser(cfData.result[0]);
+          }
         }
       } catch (err) {
         console.error('Error fetching contribution data:', err);
@@ -51,23 +84,38 @@ export default function Profile() {
       <section className="space-y-6">
         {/* GitHub 名片 */}
         <div className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">
-              <img
-                src="/icons/GitHub_Invertocat_Black.svg"
-                alt="GitHub"
-                className="w-6 h-6 block dark:hidden"
-              />
-              <img
-                src="/icons/GitHub_Invertocat_White.svg"
-                alt="GitHub"
-                className="w-6 h-6 hidden dark:block"
-              />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                <img
+                  src="/icons/GitHub_Invertocat_Black.svg"
+                  alt="GitHub"
+                  className="w-6 h-6 block dark:hidden"
+                />
+                <img
+                  src="/icons/GitHub_Invertocat_White.svg"
+                  alt="GitHub"
+                  className="w-6 h-6 hidden dark:block"
+                />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">GitHub</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">代码、算法和实验项目都在这里</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold">GitHub</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">代码、算法和实验项目都在这里</p>
-            </div>
+            {githubUser && (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-lg font-semibold">{githubUser.login}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{githubUser.name || ''}</p>
+                </div>
+                <img
+                  src={githubUser.avatar_url}
+                  alt={githubUser.login}
+                  className="w-16 h-16 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -100,14 +148,33 @@ export default function Profile() {
 
         {/* Codeforces 名片 */}
         <div className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-              <img src="/icons/code-forces.svg" alt="Codeforces" className="w-6 h-6" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900">
+                <img src="/icons/code-forces.svg" alt="Codeforces" className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Codeforces</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">算法竞赛与练习记录</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold">Codeforces</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">算法竞赛与练习记录</p>
-            </div>
+            {codeforcesUser && (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-lg font-semibold" style={{ color: getRatingColor(codeforcesUser.rating) }}>
+                    {codeforcesUser.handle}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {codeforcesUser.rank || 'Unrated'} ({codeforcesUser.rating || 0})
+                  </p>
+                </div>
+                <img
+                  src={codeforcesUser.titlePhoto}
+                  alt={codeforcesUser.handle}
+                  className="w-16 h-16 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">

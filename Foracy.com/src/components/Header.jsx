@@ -65,6 +65,7 @@ export default function Header() {
                     className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 
                             transition-colors duration-200"
                     aria-label="切换主题"
+                    title="切换主题"
                 >
                     {isDark ? (
                         // 太阳图标 (浅色模式)
