@@ -2,7 +2,7 @@
 
 ## 想要在个人博客中实现哪些功能？
 
-- [X] **An Utopia Only For Me, Focus On Technology And Love**
+- [X] **My Utopia: Focus Only On Technology And Love**
 - [X] **核心：极简，专注内容，专注过程，长期维护**
 
 ## 功能
