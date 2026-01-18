@@ -27,7 +27,7 @@ export default function About() {
         </p>
 
         <p>
-            <strong>我热爱的: </strong>
+            <strong>我热爱的: </strong><br />
             <i>长跑、足球</i>
         </p>
 
