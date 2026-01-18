@@ -30,9 +30,12 @@ export default function Header() {
                     alt="Profile Picture" 
                     className="rounded-full w-12 h-12" 
                 /> 
-                <h1 className="text-gray-600 dark:text-gray-400"> 
-                    Foracy's Blog 
-                </h1>
+                <div className="flex-col space-y-0">
+                    <h1 className="text-gray-600 dark:text-gray-400"> 
+                        Foracy's Blog 
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-150">An Utopia Only For Me, Focus On Technology And Love</p>
+                </div>
             </a>
             
             <div className="flex items-center gap-2">
