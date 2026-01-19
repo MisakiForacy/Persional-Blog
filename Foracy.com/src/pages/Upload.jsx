@@ -2,9 +2,21 @@ import { useState, useEffect } from 'react';
 import PostContent from '../components/PostContent';
 
 const TAG_OPTIONS = [
-  '算法', '前端', '后端', '数据结构', '竞赛', 
-  'React', 'Vue', 'Node.js', 'Python', 'Java',
-  '人工智能', '机器学习', '数据库', '系统设计', '其他'
+  '算法',
+  '前端',
+  '后端',
+  '数据结构',
+  '竞赛',
+  'React',
+  'Vue',
+  'Node.js',
+  'Python',
+  'Java',
+  '人工智能',
+  '机器学习',
+  '数据库',
+  '系统设计',
+  '其他',
 ];
 
 // API 服务器地址（开发环境）
@@ -44,7 +56,7 @@ export default function Upload() {
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const fileExtension = file.name.split('.').pop().toLowerCase();
     if (!['md', 'markdown', 'html', 'htm'].includes(fileExtension)) {
       setMessage({ type: 'error', text: '仅支持 .md 和 .html 文件' });
@@ -52,7 +64,9 @@ export default function Upload() {
     }
 
     setFileName(file.name);
-    setFileType(fileExtension === 'html' || fileExtension === 'htm' ? 'html' : 'md');
+    setFileType(
+      fileExtension === 'html' || fileExtension === 'htm' ? 'html' : 'md'
+    );
     const text = await file.text();
     setContent(text);
     setMessage({ type: '', text: '' });
@@ -61,10 +75,8 @@ export default function Upload() {
   };
 
   const toggleTag = (tag) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
 
@@ -102,7 +114,7 @@ export default function Upload() {
         date: date,
         summary: summary.trim() || '',
         tags: selectedTags,
-        type: fileType
+        type: fileType,
       };
 
       // 调用后端API
@@ -112,8 +124,8 @@ export default function Upload() {
         body: JSON.stringify({
           post: newPost,
           content: content,
-          fileName: `${finalSlug}.${fileType}`
-        })
+          fileName: `${finalSlug}.${fileType}`,
+        }),
       });
 
       const data = await response.json();
@@ -129,7 +141,7 @@ export default function Upload() {
           setFileName('');
           setFileType('');
           setMessage({ type: '', text: '' });
-          
+
           // 重新获取下一个ID
           try {
             const nextIdResponse = await fetch(`${API_BASE_URL}/api/next-id`);
@@ -148,9 +160,9 @@ export default function Upload() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage({ 
-        type: 'error', 
-        text: `连接失败：${error.message}。请确保后端服务器正在运行（http://localhost:3001）` 
+      setMessage({
+        type: 'error',
+        text: `连接失败：${error.message}。请确保后端服务器正在运行（http://localhost:3001）`,
       });
     } finally {
       setUploading(false);
@@ -167,22 +179,28 @@ export default function Upload() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/posts/${deleteSlug.trim()}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/posts/${deleteSlug.trim()}`,
+        {
+          method: 'DELETE',
+        }
+      );
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setMessage({ type: 'success', text: `✓ 已删除文章：${deleteSlug.trim()}` });
+        setMessage({
+          type: 'success',
+          text: `✓ 已删除文章：${deleteSlug.trim()}`,
+        });
         setDeleteSlug('');
       } else {
         setMessage({ type: 'error', text: data.error || '删除失败，请重试' });
       }
     } catch (error) {
       console.error('Delete error:', error);
-      setMessage({ 
-        type: 'error', 
-        text: `删除失败：${error.message}。请确认后端已启动（http://localhost:3001）` 
+      setMessage({
+        type: 'error',
+        text: `删除失败：${error.message}。请确认后端已启动（http://localhost:3001）`,
       });
     } finally {
       setDeleting(false);
@@ -194,7 +212,9 @@ export default function Upload() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
         {/* 标题栏 */}
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">上传文章</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            上传文章
+          </h2>
           <button
             onClick={handleConfirm}
             disabled={uploading}
@@ -210,11 +230,15 @@ export default function Upload() {
 
         {/* 消息提示 */}
         {message.text && (
-          <div className={`p-4 rounded-lg ${
-            message.type === 'success' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' :
-            message.type === 'error' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
-            'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-          }`}>
+          <div
+            className={`p-4 rounded-lg ${
+              message.type === 'success'
+                ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                : message.type === 'error'
+                  ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                  : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+            }`}
+          >
             {message.text}
           </div>
         )}
@@ -224,8 +248,12 @@ export default function Upload() {
           {/* ID 显示（只读） */}
           <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">文章ID（8位随机数字）</span>
-              <span className="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400">{slug || '加载中...'}</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                文章ID（8位随机数字）
+              </span>
+              <span className="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400">
+                {slug || '加载中...'}
+              </span>
             </div>
           </div>
 
@@ -263,7 +291,7 @@ export default function Upload() {
               标签
             </label>
             <div className="flex flex-wrap gap-2">
-              {TAG_OPTIONS.map(tag => (
+              {TAG_OPTIONS.map((tag) => (
                 <button
                   key={tag}
                   type="button"
@@ -288,7 +316,8 @@ export default function Upload() {
           {/* 文件上传 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              选择本地文件（支持 .md 和 .html）<span className="text-red-500">*</span>
+              选择本地文件（支持 .md 和 .html）
+              <span className="text-red-500">*</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -312,13 +341,15 @@ export default function Upload() {
         {/* 预览区域 */}
         {content && (
           <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">预览</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              预览
+            </h3>
             {fileType === 'md' ? (
               <PostContent content={content} />
             ) : (
-              <div 
+              <div
                 className="prose dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: content }} 
+                dangerouslySetInnerHTML={{ __html: content }}
               />
             )}
           </div>
@@ -332,7 +363,9 @@ export default function Upload() {
 
         {/* 删除文章 */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">删除文章</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            删除文章
+          </h3>
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <input
               type="text"
@@ -353,7 +386,9 @@ export default function Upload() {
               {deleting ? '删除中...' : '删除文章'}
             </button>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">删除将移除对应文件并更新 meta.js，请谨慎操作。</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            删除将移除对应文件并更新 meta.js，请谨慎操作。
+          </p>
         </div>
       </div>
     </div>

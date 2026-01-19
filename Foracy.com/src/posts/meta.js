@@ -1,8 +1,18 @@
-export const posts = [
-    {
-    "slug": "000001",
+export const posts = [{
+    "slug": "73151308",
+    "title": "XCPC2025赛季总结",
+    "date": "2026-01-20 02:35",
+    "summary": "XCPC2025赛季总结",
+    "tags": [
+        "随笔",
+        "竞赛"
+    ],
+    "type": "md"
+},
+{
+    "slug": "49257174",
     "title": "HELLO WORLD",
-    "date": "2026-01-18 01:15",
+    "date": "2026-01-20 01:29",
     "summary": "My Utopia: Focus Only On Technology And Love",
     "tags": [
         "其他"
@@ -10,21 +20,16 @@ export const posts = [
     "type": "md"
 },
     {
-    "slug": "000002",
-    "title": "XCPC2025赛季总结",
-    "date": "2026-01-18 01:23",
-    "summary": "一些竞赛总结&&感悟",
+    "slug": "72561379",
+    "title": "算法竞赛自用模板汇总（updating）",
+    "date": "2026-01-20 01:33",
+    "summary": "算法竞赛自用模板汇总",
     "tags": [
         "算法",
-        "竞赛"
+        "数据结构",
+        "竞赛",
+        "Cpp"
     ],
-    "type": "md"
-},
-    {
-    "slug": "000003",
-    "title": "算法竞赛模板汇总",
-    "date": "2026-01-19 01:25",
-    "summary": "算法竞赛模板汇总（自用）",
     "type": "md"
 }
 ];

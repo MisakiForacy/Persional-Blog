@@ -12,33 +12,40 @@ export default function About() {
           你好，我是 <strong>Foracy</strong>，一名热爱技术与思考的开发者。
         </p>
 
-        <p>
-          这个博客是我的个人空间，记录我在编程、技术和生活中的点滴感悟。
-        </p>
+        <p>这个博客是我的个人空间，记录我在编程、技术和生活中的点滴感悟。</p>
 
         <p>
-          <strong>我相信的: </strong><br />
+          <strong>我相信的: </strong>
+          <br />
           <i>越简单越美</i>
         </p>
 
         <p>
-            <strong>我擅长的: </strong><br />
-            <i>算法与数据结构、前端开发、全栈开发</i>
+          <strong>我擅长的: </strong>
+          <br />
+          <i>算法与数据结构、前端开发、全栈开发</i>
         </p>
 
         <p>
-            <strong>我热爱的: </strong><br />
-            <i>长跑、足球</i>
+          <strong>我热爱的: </strong>
+          <br />
+          <i>长跑、足球</i>
         </p>
 
         <p>
-          <strong>在探索的：</strong><br />
+          <strong>在探索的：</strong>
+          <br />
           <span className="flex flex-wrap gap-2">
-            {['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Unity'].map((tech) => (
-              <span key={tech} className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded text-sm">
-                {tech}
-              </span>
-            ))}
+            {['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Unity'].map(
+              (tech) => (
+                <span
+                  key={tech}
+                  className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded text-sm"
+                >
+                  {tech}
+                </span>
+              )
+            )}
           </span>
         </p>
 
