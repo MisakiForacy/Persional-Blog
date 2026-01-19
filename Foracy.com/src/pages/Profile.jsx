@@ -27,22 +27,39 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [githubUser, setGithubUser] = useState(null);
   const [codeforcesUser, setCodeforcesUser] = useState(null);
+  // 已移除 LeetCode 卡片
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 统计博客每日提交次数（按日期汇总，不含时间）
-        const blogData = posts.reduce((acc, post) => {
-          const raw = post.date || '';
-          const dateOnly = raw.split(' ')[0];
-          if (dateOnly) {
-            acc[dateOnly] = (acc[dateOnly] || 0) + 1;
+        
+        // 从后端获取博客提交历史记录
+        let blogData = {};
+        try {
+          const response = await fetch('http://localhost:3001/api/blog-submissions');
+          if (response.ok) {
+            const data = await response.json();
+            blogData = data.submissions || {};
           }
-          return acc;
-        }, {});
+        } catch (err) {
+          console.warn('Failed to fetch blog submissions history:', err);
+          // 降级：如果历史记录API不可用，使用当前posts数据
+          blogData = posts.reduce((acc, post) => {
+            const raw = post.date || '';
+            const dateOnly = raw.split(' ')[0];
+            if (dateOnly) {
+              acc[dateOnly] = (acc[dateOnly] || 0) + 1;
+            }
+            return acc;
+          }, {});
+        }
 
-        const data = await getCombinedContributions('MisakiForacy', 'FXY_AC', blogData);
+        const data = await getCombinedContributions(
+          'MisakiForacy',
+          'FXY_AC',
+          blogData
+        );
         setContributionData(data);
 
         // 从数据中提取所有年份并排序
@@ -53,27 +70,32 @@ export default function Profile() {
         });
         const years = Array.from(yearsSet).sort((a, b) => b - a);
         setAvailableYears(years);
-        
+
         // 默认选择最新的年份
         if (years.length > 0) {
           setSelectedYear(years[0]);
         }
 
         // 获取GitHub用户信息
-        const githubResponse = await fetch('https://api.github.com/users/MisakiForacy');
+        const githubResponse = await fetch(
+          'https://api.github.com/users/MisakiForacy'
+        );
         if (githubResponse.ok) {
           const githubData = await githubResponse.json();
           setGithubUser(githubData);
         }
 
         // 获取Codeforces用户信息
-        const cfResponse = await fetch('https://codeforces.com/api/user.info?handles=FXY_AC');
+        const cfResponse = await fetch(
+          'https://codeforces.com/api/user.info?handles=FXY_AC'
+        );
         if (cfResponse.ok) {
           const cfData = await cfResponse.json();
           if (cfData.status === 'OK' && cfData.result.length > 0) {
             setCodeforcesUser(cfData.result[0]);
           }
         }
+
       } catch (err) {
         console.error('Error fetching contribution data:', err);
         setError(err.message);
@@ -111,14 +133,18 @@ export default function Profile() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">GitHub</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">代码、算法和实验项目都在这里</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  代码、算法和实验项目都在这里
+                </p>
               </div>
             </div>
             {githubUser && (
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-lg font-semibold">{githubUser.login}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{githubUser.name || ''}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {githubUser.name || ''}
+                  </p>
                 </div>
                 <img
                   src={githubUser.avatar_url}
@@ -130,8 +156,11 @@ export default function Profile() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {["React", "算法", "竞赛", "工具脚本", "可视化"].map((tag) => (
-              <span key={tag} className="px-3 py-1 text-sm rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+            {['React', '算法', '竞赛', '工具脚本', '可视化'].map((tag) => (
+              <span
+                key={tag}
+                className="px-3 py-1 text-sm rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+              >
                 {tag}
               </span>
             ))}
@@ -162,21 +191,31 @@ export default function Profile() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-                <img src="/icons/code-forces.svg" alt="Codeforces" className="w-6 h-6" />
+                <img
+                  src="/icons/code-forces.svg"
+                  alt="Codeforces"
+                  className="w-6 h-6"
+                />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Codeforces</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">算法竞赛与练习记录</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  算法竞赛与练习记录
+                </p>
               </div>
             </div>
             {codeforcesUser && (
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-lg font-semibold" style={{ color: getRatingColor(codeforcesUser.rating) }}>
+                  <p
+                    className="text-lg font-semibold"
+                    style={{ color: getRatingColor(codeforcesUser.rating) }}
+                  >
                     {codeforcesUser.handle}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {codeforcesUser.rank || 'Unrated'} ({codeforcesUser.rating || 0})
+                    {codeforcesUser.rank || 'Unrated'} (
+                    {codeforcesUser.rating || 0})
                   </p>
                 </div>
                 <img
@@ -189,8 +228,11 @@ export default function Profile() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {["Codeforces", "算法", "竞赛", "数据结构", "刷题"].map((tag) => (
-              <span key={tag} className="px-3 py-1 text-sm rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+            {['Codeforces', '算法', '竞赛', '数据结构', '刷题'].map((tag) => (
+              <span
+                key={tag}
+                className="px-3 py-1 text-sm rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+              >
                 {tag}
               </span>
             ))}
@@ -219,11 +261,13 @@ export default function Profile() {
         {/* 热力图 */}
         <div className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
           <h3 className="text-lg font-semibold">每日提交热力图</h3>
-          {loading && <p className="text-gray-500 dark:text-gray-400">加载数据中...</p>}
+          {loading && (
+            <p className="text-gray-500 dark:text-gray-400">加载数据中...</p>
+          )}
           {error && <p className="text-red-500">错误: {error}</p>}
           {!loading && availableYears.length > 0 && (
-            <ContributionHeatmap 
-              data={contributionData} 
+            <ContributionHeatmap
+              data={contributionData}
               availableYears={availableYears}
               selectedYear={selectedYear}
               onYearChange={setSelectedYear}

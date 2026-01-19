@@ -41,7 +41,11 @@ export async function getGithubContributions(username) {
       }
     }
 
-    console.log('GitHub contributions loaded:', Object.keys(contributionMap).length, 'dates');
+    console.log(
+      'GitHub contributions loaded:',
+      Object.keys(contributionMap).length,
+      'dates'
+    );
     return contributionMap;
   } catch (err) {
     console.error('Failed to fetch GitHub contributions:', err);
@@ -76,7 +80,11 @@ export async function getCodeforcesSubmissions(username) {
       });
     }
 
-    console.log('Codeforces submissions loaded:', Object.keys(submissionMap).length, 'dates');
+    console.log(
+      'Codeforces submissions loaded:',
+      Object.keys(submissionMap).length,
+      'dates'
+    );
     return submissionMap;
   } catch (err) {
     console.error('Failed to fetch Codeforces submissions:', err);
@@ -124,10 +132,7 @@ export async function getCombinedContributions(
   });
 
   console.log('Combined total dates:', Object.keys(combined).length);
-  console.log(
-    'Combined data sample:',
-    Object.entries(combined).slice(0, 10)
-  );
+  console.log('Combined data sample:', Object.entries(combined).slice(0, 10));
 
   return combined;
 }

@@ -5,12 +5,23 @@ import { create, all } from 'mathjs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const ADMIN_PAGE_DIR = join(__dirname, 'admin-page');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const MONGODB_DB = process.env.MONGODB_DB || 'myblog';
+
+// MongoDB 连接
+const mongoClient = new MongoClient(MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000,
+});
+const dbPromise = mongoClient.connect().then((client) => client.db(MONGODB_DB));
+const getDb = async () => dbPromise;
 
 // math.js 实例（后端数学库）
 const math = create(all);
@@ -20,11 +31,27 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
+// 后台上传页面静态资源
+app.use('/admin', express.static(ADMIN_PAGE_DIR));
+
 // 记录请求
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// 认证中间件：验证密钥
+const verifyAuth = (req, res, next) => {
+  const secretKey = process.env.ADMIN_SECRET_KEY || 'fxy091582'; // 默认密钥（可改为环境变量）
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+  if (token === secretKey) {
+    next();
+  } else {
+    res.status(401).json({ success: false, error: '未授权：密钥不正确或未提供' });
+  }
+};
 
 // 生成唯一的随机8位ID（00000000-99999999），避免与已有重复
 const getRandomId = (metaPath) => {
@@ -68,6 +95,54 @@ const getRandomId = (metaPath) => {
   }
 };
 
+// 提交历史记录管理（同时写文件与 MongoDB）
+const recordBlogSubmission = async (operationType) => {
+  try {
+    const submissionsPath = join(__dirname, '../Foracy.com/src/posts', 'submissions.json');
+    
+    // 读取现有记录（如果不存在则初始化为空数组）
+    let submissions = [];
+    if (existsSync(submissionsPath)) {
+      try {
+        const content = readFileSync(submissionsPath, 'utf-8');
+        submissions = JSON.parse(content);
+      } catch (err) {
+        console.warn('读取提交记录失败，初始化为空数组');
+        submissions = [];
+      }
+    }
+    
+    // 记录当前操作
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    const entry = {
+      date: dateStr,
+      timestamp: now.toISOString(),
+      type: operationType
+    };
+
+    submissions.push(entry);
+    
+    // 保存更新后的记录（文件）
+    writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2), 'utf-8');
+    console.log(`✓ 提交记录已记录: ${dateStr} (${operationType})`);
+
+    // 保存到 MongoDB（忽略失败）
+    try {
+      const db = await getDb();
+      await db.collection('submissions').insertOne({ ...entry, createdAt: now });
+    } catch (err) {
+      console.warn('提交记录写入 Mongo 失败:', err.message);
+    }
+  } catch (error) {
+    console.error('记录提交失败:', error.message);
+  }
+};
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend server is running' });
@@ -87,6 +162,41 @@ app.get('/api/math/evaluate', (req, res) => {
   }
 });
 
+// 获取墨客提交历史记录
+app.get('/api/blog-submissions', (req, res) => {
+  try {
+    const submissionsPath = join(__dirname, '../Foracy.com/src/posts', 'submissions.json');
+    
+    let submissions = [];
+    if (existsSync(submissionsPath)) {
+      try {
+        const content = readFileSync(submissionsPath, 'utf-8');
+        submissions = JSON.parse(content);
+      } catch (err) {
+        console.warn('读取提交记录失败:', err.message);
+      }
+    }
+    
+    // 汇总每日的提交次数
+    const submissionMap = {};
+    submissions.forEach((submission) => {
+      const dateStr = submission.date;
+      if (dateStr) {
+        submissionMap[dateStr] = (submissionMap[dateStr] || 0) + 1;
+      }
+    });
+    
+    res.json({ 
+      success: true,
+      submissions: submissionMap,
+      total: submissions.length
+    });
+  } catch (error) {
+    console.error('获取提交记录失败:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 获取下一个可用ID
 app.get('/api/next-id', (req, res) => {
   try {
@@ -99,8 +209,8 @@ app.get('/api/next-id', (req, res) => {
   }
 });
 
-// 上传文章接口
-app.post('/api/upload', (req, res) => {
+// 上传文章接口（需要认证）
+app.post('/api/upload', verifyAuth, async (req, res) => {
   try {
     const { post, content, fileName } = req.body;
 
@@ -177,8 +287,8 @@ app.post('/api/upload', (req, res) => {
         // 空数组
         newContent = `export const posts = [\n    ${postCode}\n];\n`;
       } else {
-        // 非空数组，在最后添加
-        newContent = `export const posts = [${postsArray},\n    ${postCode}\n];\n`;
+        // 非空数组，在最前面添加（最新文章在前）
+        newContent = `export const posts = [${postCode},\n${postsArray}\n];\n`;
       }
 
       // 保存更新后的 meta.js
@@ -187,6 +297,28 @@ app.post('/api/upload', (req, res) => {
     } else {
       throw new Error('meta.js 格式不正确');
     }
+
+    // 写入 MongoDB
+    try {
+      const db = await getDb();
+      // 若已存在相同 slug 则拒绝
+      const existed = await db.collection('posts').findOne({ slug: post.slug });
+      if (existed) {
+        return res.status(409).json({
+          error: `Slug "${post.slug}" 已存在，请使用不同的 Slug`
+        });
+      }
+      await db.collection('posts').insertOne({
+        ...newPost,
+        content,
+        createdAt: new Date(),
+      });
+    } catch (mongoErr) {
+      console.warn('写入 MongoDB 失败（upload）:', mongoErr.message);
+    }
+
+    // 记录提交历史
+    await recordBlogSubmission('upload');
 
     // 返回成功响应
     res.json({ 
@@ -204,8 +336,135 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// 删除文章接口
-app.delete('/api/posts/:slug', (req, res) => {
+// 更新文章接口（需要认证）
+app.post('/api/update', verifyAuth, async (req, res) => {
+  try {
+    const { post, content, fileName } = req.body;
+
+    // 验证必填字段
+    if (!post || !post.slug) {
+      return res.status(400).json({ 
+        error: '缺少必填字段：slug' 
+      });
+    }
+
+    if (!post.title) {
+      return res.status(400).json({ 
+        error: '缺少必填字段：title' 
+      });
+    }
+
+    if (!content) {
+      return res.status(400).json({ 
+        error: '缺少文件内容' 
+      });
+    }
+
+    // 构建文件路径
+    const postsDir = join(__dirname, '../Foracy.com/src/posts');
+    const metaPath = join(postsDir, 'meta.js');
+
+    const finalFileName = fileName || `${post.slug}.${post.type || 'md'}`;
+    const filePath = join(postsDir, finalFileName);
+
+    // 保存更新的文件
+    writeFileSync(filePath, content, 'utf-8');
+    console.log(`✓ 文件已更新: ${filePath}`);
+
+    // 生成当前更新时间
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const updateDate = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+    // 读取现有 meta.js
+    let metaContent = readFileSync(metaPath, 'utf-8');
+
+    // 构建更新的文章对象（更新发布时间为当前时间）
+    const updatedPost = {
+      slug: post.slug,
+      title: post.title,
+      date: updateDate, // 更新为当前时间
+      summary: post.summary || '',
+      ...(post.tags && post.tags.length > 0 && { tags: post.tags }),
+      type: post.type || 'md'
+    };
+
+    // 转换为JavaScript代码
+    const postCode = JSON.stringify(updatedPost, null, 4);
+
+    // 找到 posts 数组并替换对应项
+    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*?)\];/);
+    
+    if (postsArrayMatch) {
+      const postsArrayCode = `[${postsArrayMatch[1]}]`;
+      const postsList = Function(`return ${postsArrayCode}`)();
+
+      // 找到要更新的文章
+      const index = postsList.findIndex(p => p.slug === post.slug);
+      if (index === -1) {
+        return res.status(404).json({ 
+          error: `未找到 slug 为 "${post.slug}" 的文章` 
+        });
+      }
+
+      // 更新文章
+      postsList[index] = updatedPost;
+
+      // 重写 meta.js
+      const rebuilt = postsList
+        .map(p => JSON.stringify(p, null, 4))
+        .join(',\n    ');
+
+      const newMeta = `export const posts = [\n    ${rebuilt}\n];\n`;
+      writeFileSync(metaPath, newMeta, 'utf-8');
+      console.log(`✓ meta.js 已更新`);
+
+      // 写入 MongoDB
+      try {
+        const db = await getDb();
+        await db.collection('posts').updateOne(
+          { slug: post.slug },
+          {
+            $set: {
+              ...updatedPost,
+              content,
+              updatedAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+      } catch (mongoErr) {
+        console.warn('写入 MongoDB 失败（update）:', mongoErr.message);
+      }
+
+      // 记录提交历史
+      await recordBlogSubmission('update');
+
+      // 返回成功响应
+      res.json({ 
+        success: true,
+        message: '文章更新成功',
+        post: updatedPost,
+        filePath: filePath
+      });
+    } else {
+      throw new Error('meta.js 格式不正确');
+    }
+
+  } catch (error) {
+    console.error('更新错误:', error.message);
+    res.status(500).json({ 
+      error: error.message || '服务器错误' 
+    });
+  }
+});
+
+// 删除文章接口（需要认证）
+app.delete('/api/posts/:slug', verifyAuth, async (req, res) => {
   try {
     const { slug } = req.params;
     if (!slug) {
@@ -258,6 +517,17 @@ app.delete('/api/posts/:slug', (req, res) => {
     writeFileSync(metaPath, newMeta, 'utf-8');
     console.log('✓ meta.js 已更新(删除)');
 
+    // 删除 MongoDB 记录（忽略失败）
+    try {
+      const db = await getDb();
+      await db.collection('posts').deleteOne({ slug });
+    } catch (mongoErr) {
+      console.warn('删除 MongoDB 失败（delete）:', mongoErr.message);
+    }
+
+    // 记录提交历史
+    await recordBlogSubmission('delete');
+
     return res.json({ success: true, deleted: removed });
   } catch (error) {
     console.error('删除错误:', error.message);
@@ -271,27 +541,69 @@ app.get('/api/posts', (req, res) => {
     const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
     
     if (!existsSync(metaPath)) {
-      return res.json({ posts: [] });
+      return res.json({ success: true, posts: [] });
     }
 
     const metaContent = readFileSync(metaPath, 'utf-8');
     
-    // 这是一个简单的提取，生产环境应该更安全
+    // 解析 posts 数组
     const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
     
     if (postsArrayMatch) {
-      // 返回原始内容，让前端自己解析
-      res.json({ 
-        success: true,
-        raw: metaContent 
-      });
+      try {
+        // 安全地解析 posts 数组
+        const postsArrayCode = `[${postsArrayMatch[1]}]`;
+        const postsList = Function(`return ${postsArrayCode}`)();
+        
+        res.json({ 
+          success: true,
+          posts: postsList
+        });
+      } catch (parseError) {
+        console.error('解析 posts 失败:', parseError);
+        res.json({ success: true, posts: [] });
+      }
     } else {
-      res.json({ posts: [] });
+      res.json({ success: true, posts: [] });
     }
   } catch (error) {
     console.error('错误:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// LeetCode API 代理
+app.post('/api/leetcode', async (req, res) => {
+  try {
+    const { query, variables } = req.body;
+    
+    const response = await fetch('https://leetcode.cn/graphql/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ query, variables })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json(data);
+    } else {
+      res.status(response.status).json({ 
+        error: `LeetCode API returned ${response.status}`
+      });
+    }
+  } catch (err) {
+    console.error('LeetCode proxy error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 后台上传页面入口
+app.get('/admin', (req, res) => {
+  res.sendFile(join(ADMIN_PAGE_DIR, 'index.html'));
 });
 
 // 404 处理
@@ -306,12 +618,14 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 Blog backend server running at http://localhost:${PORT}`);
   console.log(`\n可用的 API 端点:`);
-  console.log(`  GET  /api/health       - 健康检查`);
-  console.log(`  GET  /api/math/evaluate - 计算表达式 (?expr=2+3*4)`);
-  console.log(`  GET  /api/next-id      - 获取随机8位ID`);
-  console.log(`  POST /api/upload       - 上传文章`);
-  console.log(`  GET  /api/posts        - 获取文章列表`);
-  console.log(`  DELETE /api/posts/:slug - 删除文章\n`);
+  console.log(`  GET  /api/health            - 健康检查`);
+  console.log(`  GET  /api/math/evaluate     - 计算表达式 (?expr=2+3*4)`);
+  console.log(`  GET  /api/next-id           - 获取随机8位ID`);
+  console.log(`  POST /api/upload            - 上传文章`);
+  console.log(`  POST /api/update            - 更新文章`);
+  console.log(`  GET  /api/blog-submissions  - 获取博客提交历史记录`);
+  console.log(`  GET  /api/posts             - 获取文章列表`);
+  console.log(`  DELETE /api/posts/:slug     - 删除文章\n`);
 });
 
 // 优雅关闭

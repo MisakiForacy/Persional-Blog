@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(37,99,235,0.08), transparent 32%),
+                  radial-gradient(circle at 70% 0%, rgba(220,38,38,0.08), transparent 36%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+    }
+    h1 { margin: 0 0 10px; font-size: 24px; display: flex; align-items: center; gap: 10px; }
+    .desc { margin: 0 0 16px; color: var(--muted); }
+    .flex { display: flex; }
+    .between { justify-content: space-between; align-items: center; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    input, textarea, select {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    button {
+      border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; color: #fff; cursor: pointer;
+      background: var(--primary); box-shadow: 0 8px 30px rgba(37,99,235,0.22); transition: transform .1s ease, box-shadow .1s ease;
+    }
+    button.secondary { background: #e5e7eb; color: #111827; box-shadow: none; }
+    button.danger { background: var(--danger); box-shadow: 0 8px 30px rgba(220,38,38,0.18); }
+    button:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; transform: none; }
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    .tag-btn { border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+    .tag-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #e5e7eb; color: #374151; font-size: 12px; }
+    .status { margin-top: 12px; padding: 12px; border-radius: 12px; font-size: 14px; display: none; }
+    .status.success { background: rgba(22,163,74,0.1); color: #15803d; border: 1px solid rgba(22,163,74,0.25); }
+    .status.error { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.25); }
+    .status.info { background: rgba(37,99,235,0.1); color: #1d4ed8; border: 1px solid rgba(37,99,235,0.2); }
+    .section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+    .preview { background: #f9fafb; border: 1px solid var(--border); border-radius: 12px; padding: 14px; max-height: 380px; overflow: auto; }
+    .empty { text-align: center; color: var(--muted); padding: 16px 0; }
+  </style>
+    .status.error { background: rgba(220,38,38,0.12); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+    .status.info { background: rgba(37,99,235,0.12); color: #93c5fd; border: 1px solid rgba(37,99,235,0.3); }
+    .section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+    .preview { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; max-height: 380px; overflow: auto; }
+    .empty { text-align: center; color: var(--muted); padding: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <div class="flex between">
+        <div>
+          <h1>后台文章上传</h1>
+          <p class="desc">对标 Upload.jsx：支持 md/html、标签、多预览、删除。ID 自动分配 8 位随机数。</p>
+        </div>
+        <div class="badge" id="idBadge">ID: -</div>
+      </div>
+
+      <div class="grid" style="margin-bottom:12px;">
+        <div>
+          <label>API 地址</label>
+          <input id="api" type="text" value="http://localhost:3001" />
+        </div>
+        <div>
+          <label>管理员密钥</label>
+          <input id="key" type="password" placeholder="输入密钥" />
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label>标题 *</label>
+          <input id="title" type="text" placeholder="文章标题" />
+        </div>
+        <div>
+          <label>概述（可选）</label>
+          <input id="summary" type="text" placeholder="文章简介或摘要" />
+        </div>
+      </div>
+
+      <div class="section">
+        <label>标签</label>
+        <div id="tags" class="flex" style="gap:8px; flex-wrap:wrap;"></div>
+        <p id="tagSelected" class="desc" style="margin-top:6px; display:none;"></p>
+      </div>
+
+      <div class="section">
+        <label>选择本地文件（支持 .md/.html） *</label>
+        <input id="file" type="file" accept=".md,.markdown,.html,.htm" />
+        <div class="flex" style="gap:8px; margin-top:8px; align-items:center;">
+          <span class="badge" id="fileName">未选择文件</span>
+          <span class="badge" id="fileType">类型未知</span>
+        </div>
+      </div>
+
+      <div class="flex" style="gap:10px; margin-top:14px;">
+        <button id="uploadBtn">确认上传</button>
+        <button id="refreshId" class="secondary">刷新 ID</button>
+      </div>
+
+      <div id="status" class="status info"></div>
+
+      <div class="section">
+        <h3 style="margin:0 0 10px;">预览</h3>
+        <div id="preview" class="preview empty">请填写文章信息并选择文件</div>
+      </div>
+
+      <div class="section">
+        <h3 style="margin:0 0 10px;">删除文章</h3>
+        <div class="flex" style="gap:10px; flex-wrap:wrap;">
+          <input id="deleteSlug" type="text" placeholder="输入要删除的文章 Slug" style="flex:1; min-width:240px;" />
+          <button id="deleteBtn" class="danger">删除文章</button>
+        </div>
+        <p class="desc" style="margin-top:6px;">删除将移除对应文件并更新 meta.js，请谨慎操作。</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TAG_OPTIONS = [
+      '算法','前端','后端','数据结构','竞赛',
+      'React','Vue','Node.js','Python','Java',
+      '人工智能','机器学习','数据库','系统设计','其他'
+    ];
+
+    const apiInput = document.getElementById('api');
+    const keyInput = document.getElementById('key');
+    const titleInput = document.getElementById('title');
+    const summaryInput = document.getElementById('summary');
+    const tagsBox = document.getElementById('tags');
+    const tagSelected = document.getElementById('tagSelected');
+    const fileInput = document.getElementById('file');
+    const fileNameBadge = document.getElementById('fileName');
+    const fileTypeBadge = document.getElementById('fileType');
+    const idBadge = document.getElementById('idBadge');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const refreshIdBtn = document.getElementById('refreshId');
+    const previewBox = document.getElementById('preview');
+    const statusBox = document.getElementById('status');
+    const deleteSlugInput = document.getElementById('deleteSlug');
+    const deleteBtn = document.getElementById('deleteBtn');
+
+    let selectedTags = [];
+    let fileContent = '';
+    let fileType = '';
+    let nextId = '-';
+
+    // 渲染标签按钮
+    TAG_OPTIONS.forEach(tag => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = tag;
+      btn.className = 'tag-btn';
+      btn.onclick = () => {
+        if (selectedTags.includes(tag)) {
+          selectedTags = selectedTags.filter(t => t !== tag);
+          btn.classList.remove('active');
+        } else {
+          selectedTags.push(tag);
+          btn.classList.add('active');
+        }
+        if (selectedTags.length) {
+          tagSelected.style.display = 'block';
+          tagSelected.textContent = '已选择：' + selectedTags.join('、');
+        } else {
+          tagSelected.style.display = 'none';
+        }
+      };
+      tagsBox.appendChild(btn);
+    });
+
+    const setStatus = (type, msg) => {
+      statusBox.style.display = 'block';
+      statusBox.className = 'status ' + type;
+      statusBox.textContent = msg;
+    };
+
+    const clearStatus = () => {
+      statusBox.style.display = 'none';
+      statusBox.textContent = '';
+    };
+
+    const fetchNextId = async () => {
+      try {
+        const res = await fetch(`${apiInput.value}/api/next-id`);
+        const data = await res.json();
+        if (data.success && data.nextId) {
+          nextId = data.nextId;
+          idBadge.textContent = `ID: ${nextId}`;
+        } else {
+          setStatus('error', data.error || '获取 ID 失败');
+        }
+      } catch (err) {
+        setStatus('error', '获取 ID 失败: ' + err.message);
+      }
+    };
+
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const ext = f.name.split('.').pop()?.toLowerCase();
+      fileType = ['html','htm'].includes(ext) ? 'html' : 'md';
+      fileNameBadge.textContent = f.name;
+      fileTypeBadge.textContent = `类型: ${fileType.toUpperCase()}`;
+      fileContent = await f.text();
+      renderPreview();
+    });
+
+    const renderPreview = () => {
+      if (!fileContent) {
+        previewBox.classList.add('empty');
+        previewBox.textContent = '请填写文章信息并选择文件';
+        return;
+      }
+      previewBox.classList.remove('empty');
+      if (fileType === 'md') {
+        marked.setOptions({
+          highlight(code, lang) {
+            if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
+            return hljs.highlightAuto(code).value;
+          }
+        });
+        previewBox.innerHTML = marked.parse(fileContent);
+      } else {
+        previewBox.innerHTML = fileContent;
+      }
+    };
+
+    const buildDate = () => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const h = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      return `${y}-${m}-${d} ${h}:${mi}`;
+    };
+
+    uploadBtn.addEventListener('click', async () => {
+      clearStatus();
+      const key = keyInput.value.trim();
+      const title = titleInput.value.trim();
+      const summary = summaryInput.value.trim();
+      if (!key) return setStatus('error', '请输入管理员密钥');
+      if (!title) return setStatus('error', '请输入标题');
+      if (!fileContent) return setStatus('error', '请选择文件');
+
+      uploadBtn.disabled = true;
+      setStatus('info', '上传中...');
+
+      try {
+        if (nextId === '-') await fetchNextId();
+        const payload = {
+          post: {
+            slug: nextId,
+            title,
+            date: buildDate(),
+            summary,
+            tags: selectedTags,
+            type: fileType || 'md'
+          },
+          content: fileContent,
+          fileName: `${nextId}.${fileType || 'md'}`
+        };
+
+        const res = await fetch(`${apiInput.value}/api/upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setStatus('success', '✓ 上传成功！文章已发布。');
+          // 重置表单并刷新 ID
+          titleInput.value = '';
+          summaryInput.value = '';
+          selectedTags = [];
+          Array.from(tagsBox.children).forEach(btn => btn.classList.remove('active'));
+          tagSelected.style.display = 'none';
+          fileInput.value = '';
+          fileContent = '';
+          fileType = '';
+          fileNameBadge.textContent = '未选择文件';
+          fileTypeBadge.textContent = '类型未知';
+          renderPreview();
+          await fetchNextId();
+        } else {
+          setStatus('error', data.error || '上传失败，请重试');
+        }
+      } catch (err) {
+        setStatus('error', `连接失败：${err.message}`);
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
+    refreshIdBtn.addEventListener('click', fetchNextId);
+
+    deleteBtn.addEventListener('click', async () => {
+      clearStatus();
+      const slug = deleteSlugInput.value.trim();
+      const key = keyInput.value.trim();
+      if (!key) return setStatus('error', '请输入管理员密钥');
+      if (!slug) return setStatus('error', '请输入要删除的 Slug');
+      if (!confirm(`确认删除文章 ${slug} 吗？`)) return;
+
+      deleteBtn.disabled = true;
+      setStatus('info', '删除中...');
+      try {
+        const res = await fetch(`${apiInput.value}/api/posts/${slug}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${key}`
+          }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setStatus('success', `✓ 已删除文章：${slug}`);
+          deleteSlugInput.value = '';
+        } else {
+          setStatus('error', data.error || '删除失败，请重试');
+        }
+      } catch (err) {
+        setStatus('error', `删除失败：${err.message}`);
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+
+    // 初始化
+    fetchNextId();
+    renderPreview();
+  </script>
+</body>
+</html>
