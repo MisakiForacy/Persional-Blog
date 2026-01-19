@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
+import { create, all } from 'mathjs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
@@ -10,6 +11,9 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// math.js 实例（后端数学库）
+const math = create(all);
 
 // 中间件配置
 app.use(cors());
@@ -22,37 +26,45 @@ app.use((req, res, next) => {
   next();
 });
 
-// 生成下一个6位ID
-const getNextId = (metaPath) => {
+// 生成唯一的随机8位ID（00000000-99999999），避免与已有重复
+const getRandomId = (metaPath) => {
   try {
-    if (!existsSync(metaPath)) {
-      return '000001';
-    }
-
-    const metaContent = readFileSync(metaPath, 'utf-8');
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
-    
-    if (!postsArrayMatch || !postsArrayMatch[1].trim()) {
-      return '000001';
-    }
-
-    // 解析现有posts，找出最大ID
-    const postsArrayCode = `[${postsArrayMatch[1]}]`;
-    const postsList = Function(`return ${postsArrayCode}`)();
-    
-    let maxId = 0;
-    postsList.forEach(post => {
-      if (post.slug && /^\d{6}$/.test(post.slug)) {
-        const id = parseInt(post.slug, 10);
-        if (id > maxId) maxId = id;
+    const used = new Set();
+    if (existsSync(metaPath)) {
+      const metaContent = readFileSync(metaPath, 'utf-8');
+      const match = metaContent.match(/export const posts = \[([\s\S]*?)\];/);
+      if (match && match[1].trim()) {
+        const postsList = Function(`return [${match[1]}]`)();
+        postsList.forEach((post) => {
+          if (post.slug && /^\d{8}$/.test(post.slug)) {
+            used.add(post.slug);
+          }
+        });
       }
-    });
+    }
 
-    const nextId = maxId + 1;
-    return String(nextId).padStart(6, '0');
+    // 尝试生成不重复的随机ID
+    for (let i = 0; i < 1000; i++) {
+      const n = Math.floor(Math.random() * 100000000); // 0..99,999,999
+      const id = String(n).padStart(8, '0');
+      if (!used.has(id)) return id;
+    }
+
+    // 兜底：使用当前时间片生成
+    const fallback = String(Date.now() % 100000000).padStart(8, '0');
+    if (!used.has(fallback)) return fallback;
+
+    // 最后兜底：线性探测
+    let n2 = Math.floor(Math.random() * 100000000);
+    for (let i = 0; i < 100000000; i++) {
+      const id2 = String(n2).padStart(8, '0');
+      if (!used.has(id2)) return id2;
+      n2 = (n2 + 1) % 100000000;
+    }
+    return '00000000';
   } catch (error) {
-    console.error('生成ID错误:', error);
-    return '000001';
+    console.error('生成随机ID错误:', error);
+    return String(Math.floor(Math.random() * 100000000)).padStart(8, '0');
   }
 };
 
@@ -61,11 +73,25 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend server is running' });
 });
 
+// 数学表达式评估（示例：/api/math/evaluate?expr=2+3*4）
+app.get('/api/math/evaluate', (req, res) => {
+  try {
+    const { expr } = req.query;
+    if (!expr || typeof expr !== 'string' || !expr.trim()) {
+      return res.status(400).json({ error: '缺少表达式参数 expr' });
+    }
+    const result = math.evaluate(expr);
+    res.json({ success: true, expr, result });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // 获取下一个可用ID
 app.get('/api/next-id', (req, res) => {
   try {
     const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
-    const nextId = getNextId(metaPath);
+    const nextId = getRandomId(metaPath);
     res.json({ success: true, nextId });
   } catch (error) {
     console.error('获取ID错误:', error);
@@ -95,9 +121,9 @@ app.post('/api/upload', (req, res) => {
     const postsDir = join(__dirname, '../Foracy.com/src/posts');
     const metaPath = join(postsDir, 'meta.js');
 
-    // 如果没有提供slug，自动生成6位ID
+    // 如果没有提供slug，自动生成随机8位ID
     if (!post.slug) {
-      post.slug = getNextId(metaPath);
+      post.slug = getRandomId(metaPath);
     }
 
     const finalFileName = fileName || `${post.slug}.${post.type || 'md'}`;
@@ -281,7 +307,8 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Blog backend server running at http://localhost:${PORT}`);
   console.log(`\n可用的 API 端点:`);
   console.log(`  GET  /api/health       - 健康检查`);
-  console.log(`  GET  /api/next-id      - 获取下一个可用ID`);
+  console.log(`  GET  /api/math/evaluate - 计算表达式 (?expr=2+3*4)`);
+  console.log(`  GET  /api/next-id      - 获取随机8位ID`);
   console.log(`  POST /api/upload       - 上传文章`);
   console.log(`  GET  /api/posts        - 获取文章列表`);
   console.log(`  DELETE /api/posts/:slug - 删除文章\n`);
