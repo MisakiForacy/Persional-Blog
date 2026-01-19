@@ -32,7 +32,7 @@
 ## 技术栈
 
 - [X] 核心：易用，值得学
-- [ ] 前端：typeScript + React
+- [ ] 前端：javaScript + React
 - [ ] 后端：Node.js + Express
 - [ ] 数据库：MongoDB
 - [ ] 部署：Docker + Nginx

@@ -92,7 +92,7 @@ export default function Upload() {
       const minutes = String(today.getMinutes()).padStart(2, '0');
       const date = `${year}-${month}-${day} ${hours}:${minutes}`;
 
-      // 使用当前slug（由后端分配的6位ID）
+      // 使用当前slug（由后端分配的随机8位数字）
       const finalSlug = slug.trim();
 
       // 构建新文章对象
@@ -224,7 +224,7 @@ export default function Upload() {
           {/* ID 显示（只读） */}
           <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">文章ID</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">文章ID（8位随机数字）</span>
               <span className="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400">{slug || '加载中...'}</span>
             </div>
           </div>

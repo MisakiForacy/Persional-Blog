@@ -1,4 +1,5 @@
-export const posts = [{
+export const posts = [
+    {
     "slug": "000001",
     "title": "HELLO WORLD",
     "date": "2026-01-18 01:15",
