@@ -33,7 +33,7 @@ export default function Header() {
         <div className="flex-col space-y-2">
           <h1 className="text-gray-600 dark:text-gray-400">Foracy's Blog</h1>
           <p className="text-gray-500 dark:text-gray-150">
-            My Utopia: Focus Only On Technology And Love
+            My Utopia: Focus Only On Technology
           </p>
         </div>
       </a>

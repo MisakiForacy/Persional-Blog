@@ -1,4 +1,5 @@
-export const posts = [{
+export const posts = [
+    {
     "slug": "73151308",
     "title": "XCPC2025赛季总结",
     "date": "2026-01-20 02:35",
@@ -9,7 +10,7 @@ export const posts = [{
     ],
     "type": "md"
 },
-{
+    {
     "slug": "49257174",
     "title": "HELLO WORLD",
     "date": "2026-01-20 01:29",

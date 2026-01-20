@@ -1,6 +1,58 @@
-import { posts } from '../posts/meta';
+import { useState, useEffect } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function BlogList() {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // 从数据库加载文章列表
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/posts`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.statusText}`);
+        }
+        const data = await response.json();
+        
+        if (!data.success || !data.posts) {
+          throw new Error('Invalid response format');
+        }
+
+        setPosts(data.posts);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load posts:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="space-y-8">
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          加载中...
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="space-y-8">
+        <div className="text-center text-red-500 dark:text-red-400">
+          加载失败：{error}
+        </div>
+      </main>
+    );
+  }
+
   // 过滤掉无效的文章（确保有 slug 属性）
   const validPosts = posts.filter((post) => post && post.slug);
 
