@@ -9,11 +9,11 @@
 
 - [X] 核心：只为我一人服务，毕竟是个人博客
 - [X] 支持 Markdown 语法的文章编辑和发布
-- [ ] 文章分类和标签管理
+- [X] 文章分类和标签管理
 - [X] 文章自动标记发布日期
 - [X] 支持代码高亮显示
 - [X] 调节明暗调节
-- [ ] 文章存储至数据库，连接数据库
+- [X] 文章存储至数据库，连接数据库
 - [ ] 文章检索功能，根据关键词搜索文章
 - [ ] 侧栏显示文章分类
 - [X] 关于我页面，包含个人简介和联系方式
@@ -26,19 +26,19 @@
 ## 美化
 
 - [X] 核心：极简风格，注重内容
-- [ ] 首页极简，突出文章列表
+- [X] 首页极简，突出文章列表
 - [ ] 顶栏主要功能：首页、标签、明暗、音乐、关于我
 
 ## 技术栈
 
 - [X] 核心：易用，值得学
-- [ ] 前端：javaScript + React
-- [ ] 后端：Node.js + Express
-- [ ] 数据库：MongoDB
-- [ ] 部署：Docker + Nginx
-- [ ] 版本控制：Git + GitHub
+- [X] 前端：javaScript + React
+- [X] 后端：Node.js + Express
+- [X] 数据库：MongoDB
+- [X] 部署：Docker
+- [X] 版本控制：Git + GitHub
 - [ ] 代码编辑器集成：Monaco Editor 或 CodeMirror
 - [ ] 音乐播放器集成：使用网易云音乐 API 或第三方库
-- [ ] 代码高亮库：Prism.js 或 Highlight.js
-- [ ] Markdown 解析库：Marked.js 或 Markdown-it
-- [ ] 前端样式框架：Tailwind CSS 或 Bootstrap
+- [X] 代码高亮
+- [X] Markdown 解析库：Marked.js 或 Markdown-it
+- [X] 前端样式框架：Tailwind CSS 或 Bootstrap
