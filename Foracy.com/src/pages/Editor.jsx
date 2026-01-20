@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PostContent from '../components/PostContent';
 import Header from '../components/Header';
-import { posts } from '../posts/meta';
 
 const TAG_OPTIONS = [
   '算法',
@@ -111,31 +110,43 @@ export default function Editor() {
     console.log('初始化编辑器, isEditMode:', isEditMode, 'editSlug:', editSlug);
     
     if (isEditMode && editSlug) {
-      // 编辑模式：加载原文章信息
-      const validPosts = posts.filter((p) => p && p.slug);
-      const found = validPosts.find((p) => p.slug === editSlug);
-      if (found) {
-        setSlug(found.slug);
-        setTitle(found.title);
-        setSummary(found.summary || '');
-        setSelectedTags(found.tags || []);
+      // 编辑模式：从数据库加载文章
+      const fetchPost = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/posts`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch posts: ${response.statusText}`);
+          }
+          const data = await response.json();
+          
+          if (!data.success || !data.posts) {
+            throw new Error('Invalid response format');
+          }
 
-        // 加载 markdown 内容
-        import(`../posts/${editSlug}.md?raw`)
-          .then((mod) => {
-            setContent(mod.default);
+          // 查找匹配的文章
+          const found = data.posts.find((p) => p.slug === editSlug);
+          
+          if (!found) {
+            setMessage({ type: 'error', text: '文章不存在' });
             setInitialized(true);
-            console.log('✓ 编辑模式：文章已加载');
-          })
-          .catch((err) => {
-            console.error('加载文章内容失败:', err);
-            setMessage({ type: 'error', text: '加载文章内容失败' });
-            setInitialized(true);
-          });
-      } else {
-        setMessage({ type: 'error', text: '文章不存在' });
-        setInitialized(true);
-      }
+            return;
+          }
+
+          setSlug(found.slug);
+          setTitle(found.title);
+          setSummary(found.summary || '');
+          setSelectedTags(found.tags || []);
+          setContent(found.content || '');
+          setInitialized(true);
+          console.log('✓ 编辑模式：文章已从数据库加载');
+        } catch (error) {
+          console.error('加载文章内容失败:', error);
+          setMessage({ type: 'error', text: '加载文章内容失败' });
+          setInitialized(true);
+        }
+      };
+      
+      fetchPost();
       return;
     }
     

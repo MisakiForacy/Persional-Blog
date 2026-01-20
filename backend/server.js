@@ -95,23 +95,9 @@ const getRandomId = (metaPath) => {
   }
 };
 
-// 提交历史记录管理（同时写文件与 MongoDB）
+// 提交历史记录管理（仅写入 MongoDB）
 const recordBlogSubmission = async (operationType) => {
   try {
-    const submissionsPath = join(__dirname, '../Foracy.com/src/posts', 'submissions.json');
-    
-    // 读取现有记录（如果不存在则初始化为空数组）
-    let submissions = [];
-    if (existsSync(submissionsPath)) {
-      try {
-        const content = readFileSync(submissionsPath, 'utf-8');
-        submissions = JSON.parse(content);
-      } catch (err) {
-        console.warn('读取提交记录失败，初始化为空数组');
-        submissions = [];
-      }
-    }
-    
     // 记录当前操作
     const now = new Date();
     const year = now.getFullYear();
@@ -122,22 +108,14 @@ const recordBlogSubmission = async (operationType) => {
     const entry = {
       date: dateStr,
       timestamp: now.toISOString(),
-      type: operationType
+      type: operationType,
+      createdAt: now
     };
 
-    submissions.push(entry);
-    
-    // 保存更新后的记录（文件）
-    writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2), 'utf-8');
-    console.log(`✓ 提交记录已记录: ${dateStr} (${operationType})`);
-
-    // 保存到 MongoDB（忽略失败）
-    try {
-      const db = await getDb();
-      await db.collection('submissions').insertOne({ ...entry, createdAt: now });
-    } catch (err) {
-      console.warn('提交记录写入 Mongo 失败:', err.message);
-    }
+    // 保存到 MongoDB
+    const db = await getDb();
+    const result = await db.collection('submissions').insertOne(entry);
+    console.log(`✓ 提交记录已记录到数据库: ${dateStr} (${operationType})`);
   } catch (error) {
     console.error('记录提交失败:', error.message);
   }
@@ -212,7 +190,7 @@ app.get('/api/next-id', (req, res) => {
 // 上传文章接口（需要认证）
 app.post('/api/upload', verifyAuth, async (req, res) => {
   try {
-    const { post, content, fileName } = req.body;
+    const { post, content } = req.body;
 
     // 验证必填字段
     if (!post || !post.title) {
@@ -227,29 +205,11 @@ app.post('/api/upload', verifyAuth, async (req, res) => {
       });
     }
 
-    // 构建文件路径（指向前端项目）
-    const postsDir = join(__dirname, '../Foracy.com/src/posts');
-    const metaPath = join(postsDir, 'meta.js');
-
-    // 如果没有提供slug，自动生成随机8位ID
+    // 生成随机 slug
+    const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
     if (!post.slug) {
       post.slug = getRandomId(metaPath);
     }
-
-    const finalFileName = fileName || `${post.slug}.${post.type || 'md'}`;
-    const filePath = join(postsDir, finalFileName);
-
-    // 确保目录存在
-    if (!existsSync(postsDir)) {
-      mkdirSync(postsDir, { recursive: true });
-    }
-
-    // 保存文件
-    writeFileSync(filePath, content, 'utf-8');
-    console.log(`✓ 文件已保存: ${filePath}`);
-
-    // 读取现有 meta.js
-    let metaContent = readFileSync(metaPath, 'utf-8');
 
     // 构建新文章对象
     const newPost = {
@@ -261,61 +221,24 @@ app.post('/api/upload', verifyAuth, async (req, res) => {
       type: post.type || 'md'
     };
 
-    // 转换为JavaScript代码
-    const postCode = JSON.stringify(newPost, null, 4);
-
-    // 找到 posts 数组并插入新文章
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*?)\];/);
+    // 直接写入 MongoDB（无需文件系统操作）
+    const db = await getDb();
     
-    if (postsArrayMatch) {
-      const postsArray = postsArrayMatch[1].trim();
-      
-      // 检查是否已存在相同 slug 的文章
-      if (postsArray) {
-        const slugRegex = new RegExp(`["']slug["']\\s*:\\s*["']${post.slug}["']`, 'i');
-        if (slugRegex.test(postsArray)) {
-          return res.status(409).json({ 
-            error: `Slug "${post.slug}" 已存在，请使用不同的 Slug` 
-          });
-        }
-      }
-
-      // 在数组中插入新文章
-      let newContent;
-      
-      if (!postsArray || postsArray === '') {
-        // 空数组
-        newContent = `export const posts = [\n    ${postCode}\n];\n`;
-      } else {
-        // 非空数组，在最前面添加（最新文章在前）
-        newContent = `export const posts = [${postCode},\n${postsArray}\n];\n`;
-      }
-
-      // 保存更新后的 meta.js
-      writeFileSync(metaPath, newContent, 'utf-8');
-      console.log(`✓ meta.js 已更新`);
-    } else {
-      throw new Error('meta.js 格式不正确');
-    }
-
-    // 写入 MongoDB
-    try {
-      const db = await getDb();
-      // 若已存在相同 slug 则拒绝
-      const existed = await db.collection('posts').findOne({ slug: post.slug });
-      if (existed) {
-        return res.status(409).json({
-          error: `Slug "${post.slug}" 已存在，请使用不同的 Slug`
-        });
-      }
-      await db.collection('posts').insertOne({
-        ...newPost,
-        content,
-        createdAt: new Date(),
+    // 检查是否已存在相同 slug
+    const existed = await db.collection('posts').findOne({ slug: post.slug });
+    if (existed) {
+      return res.status(409).json({
+        error: `Slug "${post.slug}" 已存在，请使用不同的 Slug`
       });
-    } catch (mongoErr) {
-      console.warn('写入 MongoDB 失败（upload）:', mongoErr.message);
     }
+
+    // 插入新文章到数据库
+    const result = await db.collection('posts').insertOne({
+      ...newPost,
+      content,
+      createdAt: new Date(),
+    });
+    console.log(`✓ 文章已保存到数据库: ${newPost.slug}`);
 
     // 记录提交历史
     await recordBlogSubmission('upload');
@@ -325,7 +248,7 @@ app.post('/api/upload', verifyAuth, async (req, res) => {
       success: true,
       message: '文章上传成功',
       post: newPost,
-      filePath: filePath
+      insertedId: result.insertedId
     });
 
   } catch (error) {
@@ -339,7 +262,7 @@ app.post('/api/upload', verifyAuth, async (req, res) => {
 // 更新文章接口（需要认证）
 app.post('/api/update', verifyAuth, async (req, res) => {
   try {
-    const { post, content, fileName } = req.body;
+    const { post, content } = req.body;
 
     // 验证必填字段
     if (!post || !post.slug) {
@@ -360,17 +283,6 @@ app.post('/api/update', verifyAuth, async (req, res) => {
       });
     }
 
-    // 构建文件路径
-    const postsDir = join(__dirname, '../Foracy.com/src/posts');
-    const metaPath = join(postsDir, 'meta.js');
-
-    const finalFileName = fileName || `${post.slug}.${post.type || 'md'}`;
-    const filePath = join(postsDir, finalFileName);
-
-    // 保存更新的文件
-    writeFileSync(filePath, content, 'utf-8');
-    console.log(`✓ 文件已更新: ${filePath}`);
-
     // 生成当前更新时间
     const now = new Date();
     const year = now.getFullYear();
@@ -380,10 +292,7 @@ app.post('/api/update', verifyAuth, async (req, res) => {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const updateDate = `${year}-${month}-${day} ${hours}:${minutes}`;
 
-    // 读取现有 meta.js
-    let metaContent = readFileSync(metaPath, 'utf-8');
-
-    // 构建更新的文章对象（更新发布时间为当前时间）
+    // 构建更新的文章对象
     const updatedPost = {
       slug: post.slug,
       title: post.title,
@@ -393,67 +302,39 @@ app.post('/api/update', verifyAuth, async (req, res) => {
       type: post.type || 'md'
     };
 
-    // 转换为JavaScript代码
-    const postCode = JSON.stringify(updatedPost, null, 4);
-
-    // 找到 posts 数组并替换对应项
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*?)\];/);
+    // 直接更新 MongoDB（无需文件系统操作）
+    const db = await getDb();
     
-    if (postsArrayMatch) {
-      const postsArrayCode = `[${postsArrayMatch[1]}]`;
-      const postsList = Function(`return ${postsArrayCode}`)();
-
-      // 找到要更新的文章
-      const index = postsList.findIndex(p => p.slug === post.slug);
-      if (index === -1) {
-        return res.status(404).json({ 
-          error: `未找到 slug 为 "${post.slug}" 的文章` 
-        });
-      }
-
-      // 更新文章
-      postsList[index] = updatedPost;
-
-      // 重写 meta.js
-      const rebuilt = postsList
-        .map(p => JSON.stringify(p, null, 4))
-        .join(',\n    ');
-
-      const newMeta = `export const posts = [\n    ${rebuilt}\n];\n`;
-      writeFileSync(metaPath, newMeta, 'utf-8');
-      console.log(`✓ meta.js 已更新`);
-
-      // 写入 MongoDB
-      try {
-        const db = await getDb();
-        await db.collection('posts').updateOne(
-          { slug: post.slug },
-          {
-            $set: {
-              ...updatedPost,
-              content,
-              updatedAt: new Date(),
-            },
-          },
-          { upsert: true }
-        );
-      } catch (mongoErr) {
-        console.warn('写入 MongoDB 失败（update）:', mongoErr.message);
-      }
-
-      // 记录提交历史
-      await recordBlogSubmission('update');
-
-      // 返回成功响应
-      res.json({ 
-        success: true,
-        message: '文章更新成功',
-        post: updatedPost,
-        filePath: filePath
+    // 检查文章是否存在
+    const existed = await db.collection('posts').findOne({ slug: post.slug });
+    if (!existed) {
+      return res.status(404).json({ 
+        error: `未找到 slug 为 "${post.slug}" 的文章` 
       });
-    } else {
-      throw new Error('meta.js 格式不正确');
     }
+
+    // 更新文章
+    await db.collection('posts').updateOne(
+      { slug: post.slug },
+      {
+        $set: {
+          ...updatedPost,
+          content,
+          updatedAt: new Date(),
+        },
+      }
+    );
+    console.log(`✓ 文章已更新: ${post.slug}`);
+
+    // 记录提交历史
+    await recordBlogSubmission('update');
+
+    // 返回成功响应
+    res.json({ 
+      success: true,
+      message: '文章更新成功',
+      post: updatedPost
+    });
 
   } catch (error) {
     console.error('更新错误:', error.message);
@@ -471,64 +352,23 @@ app.delete('/api/posts/:slug', verifyAuth, async (req, res) => {
       return res.status(400).json({ error: '缺少 slug' });
     }
 
-    const postsDir = join(__dirname, '../Foracy.com/src/posts');
-    const metaPath = join(postsDir, 'meta.js');
-
-    if (!existsSync(metaPath)) {
-      return res.status(404).json({ error: 'meta.js 不存在' });
-    }
-
-    const metaContent = readFileSync(metaPath, 'utf-8');
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
-
-    if (!postsArrayMatch) {
-      return res.status(500).json({ error: 'meta.js 格式不正确' });
-    }
-
-    // 解析 posts 数组
-    const postsArrayCode = `[${postsArrayMatch[1]}]`;
-    const postsList = Function(`return ${postsArrayCode}`)();
-
-    const index = postsList.findIndex(p => p.slug === slug);
-    if (index === -1) {
+    // 直接从 MongoDB 删除（无需文件系统操作）
+    const db = await getDb();
+    
+    // 查找要删除的文章
+    const post = await db.collection('posts').findOne({ slug });
+    if (!post) {
       return res.status(404).json({ error: `未找到 slug 为 "${slug}" 的文章` });
     }
 
-    const removed = postsList.splice(index, 1)[0];
-
-    // 删除对应文件（按 type 推测后缀）
-    const ext = removed.type === 'html' ? 'html' : 'md';
-    const filePath = join(postsDir, `${removed.slug}.${ext}`);
-    if (existsSync(filePath)) {
-      try {
-        unlinkSync(filePath);
-        console.log(`✓ 已删除文件: ${filePath}`);
-      } catch (err) {
-        console.warn(`文件删除失败: ${filePath}`, err.message);
-      }
-    }
-
-    // 重写 meta.js
-    const rebuilt = postsList
-      .map(p => JSON.stringify(p, null, 4))
-      .join(',\n    ');
-
-    const newMeta = `export const posts = [\n    ${rebuilt}\n];\n`;
-    writeFileSync(metaPath, newMeta, 'utf-8');
-    console.log('✓ meta.js 已更新(删除)');
-
-    // 删除 MongoDB 记录（忽略失败）
-    try {
-      const db = await getDb();
-      await db.collection('posts').deleteOne({ slug });
-    } catch (mongoErr) {
-      console.warn('删除 MongoDB 失败（delete）:', mongoErr.message);
-    }
+    // 删除文章
+    const result = await db.collection('posts').deleteOne({ slug });
+    console.log(`✓ 文章已从数据库删除: ${slug}`);
 
     // 记录提交历史
     await recordBlogSubmission('delete');
 
-    return res.json({ success: true, deleted: removed });
+    return res.json({ success: true, deleted: post });
   } catch (error) {
     console.error('删除错误:', error.message);
     return res.status(500).json({ error: error.message || '服务器错误' });
@@ -536,36 +376,49 @@ app.delete('/api/posts/:slug', verifyAuth, async (req, res) => {
 });
 
 // 获取所有文章列表
-app.get('/api/posts', (req, res) => {
+app.get('/api/posts', async (req, res) => {
   try {
-    const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
+    // 从 MongoDB 读取文章（包含完整内容）
+    const db = await getDb();
+    const postsList = await db.collection('posts').find({}).toArray();
     
-    if (!existsSync(metaPath)) {
-      return res.json({ success: true, posts: [] });
+    // 如果数据库为空，则回退到 meta.js（向后兼容）
+    if (postsList.length === 0) {
+      const metaPath = join(__dirname, '../Foracy.com/src/posts/meta.js');
+      
+      if (!existsSync(metaPath)) {
+        return res.json({ success: true, posts: [] });
+      }
+
+      const metaContent = readFileSync(metaPath, 'utf-8');
+      
+      // 解析 posts 数组
+      const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
+      
+      if (postsArrayMatch) {
+        try {
+          // 安全地解析 posts 数组
+          const postsArrayCode = `[${postsArrayMatch[1]}]`;
+          const metaOnlyPostsList = Function(`return ${postsArrayCode}`)();
+          
+          return res.json({ 
+            success: true,
+            posts: metaOnlyPostsList
+          });
+        } catch (parseError) {
+          console.error('解析 posts 失败:', parseError);
+          return res.json({ success: true, posts: [] });
+        }
+      } else {
+        return res.json({ success: true, posts: [] });
+      }
     }
 
-    const metaContent = readFileSync(metaPath, 'utf-8');
-    
-    // 解析 posts 数组
-    const postsArrayMatch = metaContent.match(/export const posts = \[([\s\S]*)\];/);
-    
-    if (postsArrayMatch) {
-      try {
-        // 安全地解析 posts 数组
-        const postsArrayCode = `[${postsArrayMatch[1]}]`;
-        const postsList = Function(`return ${postsArrayCode}`)();
-        
-        res.json({ 
-          success: true,
-          posts: postsList
-        });
-      } catch (parseError) {
-        console.error('解析 posts 失败:', parseError);
-        res.json({ success: true, posts: [] });
-      }
-    } else {
-      res.json({ success: true, posts: [] });
-    }
+    // 从 MongoDB 返回完整文章数据（包含 content）
+    res.json({ 
+      success: true,
+      posts: postsList
+    });
   } catch (error) {
     console.error('错误:', error.message);
     res.status(500).json({ success: false, error: error.message });

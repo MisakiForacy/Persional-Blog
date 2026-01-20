@@ -1,24 +1,18 @@
 // src/pages/AboutMe.jsx
 export default function About() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-md">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-md">
       <header className="text-center">
         <h1 className="text-3xl font-bold">关于我</h1>
         <div className="w-16 h-1 bg-gray-200 dark:bg-gray-700 mx-auto mt-4 rounded-full"></div>
       </header>
 
-      <section className="prose prose-indigo prose-lg max-w-none leading-relaxed text-gray-900 dark:text-gray-100 space-y-4">
+      <section className="prose prose-indigo prose-lg max-w-none leading-relaxed text-gray-900 dark:text-gray-100 space-y-8">
         <p>
           你好，我是 <strong>Foracy</strong>，一名热爱技术与思考的开发者。
         </p>
 
         <p>这个博客是我的个人空间，记录我在编程、技术和生活中的点滴感悟。</p>
-
-        <p>
-          <strong>我相信的: </strong>
-          <br />
-          <i>越简单越美</i>
-        </p>
 
         <p>
           <strong>我擅长的: </strong>
@@ -29,7 +23,7 @@ export default function About() {
         <p>
           <strong>我热爱的: </strong>
           <br />
-          <i>长跑、足球</i>
+          <i>编程、长跑、足球</i>
         </p>
 
         <p>

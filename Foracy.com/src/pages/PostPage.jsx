@@ -1,8 +1,9 @@
 // src/pages/PostPage.jsx
 import { useParams } from 'react-router-dom';
-import { posts } from '../posts/meta'; // ← 你的文章元数据
 import { useEffect, useState } from 'react';
 import PostContent from '../components/PostContent';
+
+const API_BASE_URL = 'http://localhost:3001';
 
 export default function PostPage() {
   const { slug } = useParams();
@@ -12,27 +13,41 @@ export default function PostPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
-    // 1. 过滤出有效的文章，找到匹配的文章元数据
-    const validPosts = posts.filter((p) => p && p.slug);
-    const found = validPosts.find((p) => p.slug === slug);
-    if (!found) {
-      setPost(null);
-      setLoading(false);
-      return;
-    }
-    setPost(found);
+    // 从数据库读取文章
+    const fetchPost = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/posts`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.statusText}`);
+        }
+        const data = await response.json();
+        
+        if (!data.success || !data.posts) {
+          throw new Error('Invalid response format');
+        }
 
-    // 2. 动态导入对应的 Markdown 文件（需 Vite 支持）
-    import(`../posts/${slug}.md?raw`)
-      .then((mod) => {
-        setContent(mod.default);
+        // 查找匹配的文章
+        const found = data.posts.find((p) => p.slug === slug);
+        
+        if (!found) {
+          setPost(null);
+          setContent('# 文章未找到\n\n抱歉，该文章不存在。');
+          setLoading(false);
+          return;
+        }
+
+        setPost(found);
+        setContent(found.content || '');
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load post:', err);
-        setContent('# 文章未找到\n\n抱歉，该文章不存在。');
+      } catch (error) {
+        console.error('Failed to load post:', error);
+        setPost(null);
+        setContent('# 加载失败\n\n抱歉，无法加载文章内容。');
         setLoading(false);
-      });
+      }
+    };
+
+    fetchPost();
   }, [slug]);
 
   const handleDelete = async () => {

@@ -1,0 +1,50 @@
+# 根目录忽略文件
+
+# Node modules
+node_modules/
+npm-debug.log
+package-lock.json
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+
+# OS 文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.dockerignore
+
+# 构建输出
+dist/
+build/
+
+# 备份文件
+*.backup
+*.bak
+backup/
+backups/
+
+# 日志
+*.log
+logs/
+
+# 临时文件
+*.tmp
+.cache/
+
+# 数据库备份
+*.dump
+*.archive
+
+# 其他
+.next/
+out/
